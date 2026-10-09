@@ -1,0 +1,507 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#3447b5">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="연령 계산기">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}img{max-width:100%}</style>
+</head><body>
+<title>연구 참여 연령 계산기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one narrow working column — date inputs on top, the experiment roster as the main surface; rows turn into cards on phones. */
+:root{
+  --bg:#f3f4f7; --surface:#ffffff; --sunken:#eceef3; --fg:#1b2130; --muted:#5b6475; --line:#d9dde5;
+  --accent:#3447b5; --accent-fg:#ffffff; --accent-soft:#e7eafb;
+  --ok:#17653f; --ok-bg:#dcf3e6; --young:#8a5a00; --young-bg:#fdf0d2; --over:#9b2c3a; --over-bg:#fbe3e6;
+  --danger:#b4232f;
+  --font-body:"IBM Plex Sans KR",system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --font-data:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11141a; --surface:#191d25; --sunken:#141820; --fg:#e5e8ee; --muted:#9aa2b1; --line:#2b313c;
+  --accent:#8d9cf2; --accent-fg:#10142a; --accent-soft:#232a4a;
+  --ok:#86e0ad; --ok-bg:#16392a; --young:#f1c66b; --young-bg:#3b2f12; --over:#f4a0ab; --over-bg:#3d1c22;
+  --danger:#f08791; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11141a; --surface:#191d25; --sunken:#141820; --fg:#e5e8ee; --muted:#9aa2b1; --line:#2b313c;
+  --accent:#8d9cf2; --accent-fg:#10142a; --accent-soft:#232a4a;
+  --ok:#86e0ad; --ok-bg:#16392a; --young:#f1c66b; --young-bg:#3b2f12; --over:#f4a0ab; --over-bg:#3d1c22;
+  --danger:#f08791; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.55;margin:0}
+.wrap{max-width:960px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;display:grid;gap:18px}
+h1{font-size:1.3rem;font-weight:700;margin:0;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:1rem;font-weight:600;margin:0}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sub{color:var(--muted);font-size:.85rem;margin:2px 0 0}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:7px 12px}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:600}
+button.ghost{border-color:transparent;background:transparent;color:var(--muted);padding:5px 8px}
+button.ghost:hover{color:var(--fg);background:var(--sunken)}
+button.danger{color:var(--danger)}
+button.danger.fill{background:var(--danger);border-color:var(--danger);color:var(--surface);font-weight:600}
+button:disabled{opacity:.5;cursor:not-allowed}
+.chip{display:inline-flex;align-items:center;gap:8px;font-size:.85rem}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.dot.saved{background:var(--ok)} .dot.saving{background:var(--young)} .dot.error{background:var(--danger)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.dates{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.field{display:grid;gap:4px;min-width:0}
+.field>label{font-size:.78rem;color:var(--muted);letter-spacing:.02em}
+.datefield{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;background:var(--surface);width:210px;max-width:100%}
+.datefield:focus-within{border-color:var(--accent)}
+.datefield input[type=text]{border:0;background:transparent;color:var(--fg);font-family:var(--font-data);font-size:1.05rem;padding:9px 10px;width:100%;min-width:0;font-variant-numeric:tabular-nums}
+.datefield input[type=text]:focus-visible{outline:none}
+.pick{position:relative;border:0;border-left:1px solid var(--line);border-radius:0 8px 8px 0;padding:0;width:42px;height:42px;display:grid;place-items:center;color:var(--muted);background:transparent;flex:none}
+.pick svg{width:18px;height:18px}
+.pick input[type=date]{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;border:0;padding:0}
+.today{align-self:end;margin-bottom:3px}
+.ferr{color:var(--danger);font-size:.78rem;min-height:1.1em}
+.age{margin-top:12px;padding:10px 12px;background:var(--accent-soft);border-radius:8px;font-size:.95rem}
+.age b{font-weight:600}
+.age .num{font-family:var(--font-data);font-variant-numeric:tabular-nums}
+
+.listhead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.listhead .count{color:var(--muted);font-weight:400;font-size:.9rem}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+.tablebox{overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:.75rem;font-weight:500;color:var(--muted);letter-spacing:.03em;white-space:nowrap}
+td.name{font-weight:600}
+td.mono,.mono{font-family:var(--font-data);font-variant-numeric:tabular-nums;white-space:nowrap;font-size:.92rem}
+td.act{text-align:right;white-space:nowrap}
+.status{display:inline-block;font-size:.8rem;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.status.ok{background:var(--ok-bg);color:var(--ok)} .status.young{background:var(--young-bg);color:var(--young)} .status.over{background:var(--over-bg);color:var(--over)}
+tr.is-ok td.name{color:var(--ok)}
+.empty{color:var(--muted);text-align:center;padding:24px 8px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.note{font-size:.8rem;color:var(--muted);margin:12px 0 0;max-width:70ch}
+
+@media (max-width:640px){
+  thead{display:none}
+  table,tbody,tr,td{display:block;width:100%}
+  tr{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:10px;display:grid;grid-template-columns:1fr auto;gap:2px 10px}
+  td{border:0;padding:3px 0}
+  td.name{grid-column:1;font-size:1rem}
+  td.st{grid-column:2;grid-row:1;text-align:right}
+  td[data-k]{grid-column:1 / -1;display:flex;justify-content:space-between;gap:10px}
+  td[data-k]::before{content:attr(data-k);color:var(--muted);font-family:var(--font-body);font-size:.78rem;font-weight:400}
+  td.act{grid-column:1 / -1;text-align:left;border-top:1px dashed var(--line);margin-top:4px;padding-top:6px}
+  td.st:empty{display:none}
+}
+
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--fg);padding:0;width:min(440px,calc(100vw - 32px));max-height:calc(100vh - 48px)}
+dialog::backdrop{background:rgba(10,12,20,.45)}
+dialog form,.dlg{padding:18px;display:grid;gap:12px}
+dialog h3{margin:0;font-size:1.05rem}
+dialog p{margin:0}
+.in{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+.agegrid{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.agegrid input{width:64px;text-align:right;font-family:var(--font-data)}
+.agegrid span{color:var(--muted);font-size:.85rem;margin-right:6px}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:0;display:grid;gap:8px}
+legend{font-size:.8rem;color:var(--muted);padding:0 4px}
+.chk{display:flex;gap:6px;align-items:center;font-size:.88rem}
+.actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.actions .left{margin-right:auto}
+.err{color:var(--danger);font-size:.85rem;min-height:1.2em}
+.hint{color:var(--muted);font-size:.8rem}
+textarea.in{font-family:var(--font-data);font-size:.8rem;min-height:180px;resize:vertical}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:.88rem;max-width:calc(100vw - 32px);z-index:20}
+.toast.bad{background:var(--danger);color:var(--surface)}
+@media (prefers-reduced-motion:no-preference){.toast{transition:opacity .2s}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>연구 참여 가능 기간 계산기</h1>
+      <p class="sub">생년월일을 넣으면 실험별 참여 가능 기간을 계산합니다.</p>
+    </div>
+    <button id="acct" class="chip" type="button" aria-haspopup="dialog"><span class="dot" id="acctDot"></span><span id="acctText">이 기기에만 저장 중 · 로그인</span></button>
+  </header>
+
+  <section class="panel" aria-label="날짜 입력">
+    <div class="dates">
+      <div class="field">
+        <label for="bd">생년월일 (BD)</label>
+        <div class="datefield">
+          <input type="text" id="bd" inputmode="numeric" autocomplete="off" placeholder="YYYY/MM/DD" maxlength="10">
+          <span class="pick" title="달력에서 고르기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><input type="date" id="bdPick" aria-label="생년월일 달력" tabindex="-1"></span>
+        </div>
+        <div class="ferr" id="bdErr"></div>
+      </div>
+      <div class="field">
+        <label for="td">실험일 (TD, 선택)</label>
+        <div class="datefield">
+          <input type="text" id="td" inputmode="numeric" autocomplete="off" placeholder="YYYY/MM/DD" maxlength="10">
+          <span class="pick" title="달력에서 고르기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><input type="date" id="tdPick" aria-label="실험일 달력" tabindex="-1"></span>
+        </div>
+        <div class="ferr" id="tdErr"></div>
+      </div>
+      <button type="button" class="today" id="todayBtn">실험일 = 오늘</button>
+    </div>
+    <div class="age" id="age" hidden></div>
+  </section>
+
+  <section class="panel" aria-label="실험 목록">
+    <div class="listhead">
+      <h2>실험 목록 <span class="count" id="count"></span></h2>
+      <div class="tools">
+        <button type="button" class="ghost" id="backupBtn">백업·가져오기</button>
+        <button type="button" class="primary" id="addBtn">+ 새 실험</button>
+      </div>
+    </div>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>실험</th><th>연령 범위</th><th>가능 시작일</th><th>가능 종료일</th><th id="stTh" hidden>TD 가능 여부</th><th><span class="sr">관리</span></th></tr></thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+    <p class="note">시작일 = BD + 최소 연령, 종료일 = BD + 최대 연령 (해당 일 포함). 예: 4m 0d ~ 11m 29d → 만 4개월 0일이 되는 날부터 11개월 29일이 되는 날까지. 말일 보정: 31일생 + 1개월은 그 달의 말일로 처리합니다.</p>
+  </section>
+</div>
+
+<dialog id="dlgExp">
+  <form id="fExp" novalidate>
+    <h3 id="expTitle">실험 수정</h3>
+    <div class="field"><label for="eName">실험 이름</label><input class="in" id="eName" maxlength="40" autocomplete="off"></div>
+    <fieldset><legend>최소 연령</legend>
+      <div class="agegrid"><input class="in" type="number" id="minY" min="0" inputmode="numeric"><span>세</span><input class="in" type="number" id="minM" min="0" inputmode="numeric"><span>개월</span><input class="in" type="number" id="minD" min="0" inputmode="numeric"><span>일</span></div>
+    </fieldset>
+    <fieldset><legend>최대 연령</legend>
+      <div class="agegrid" id="maxGrid"><input class="in" type="number" id="maxY" min="0" inputmode="numeric"><span>세</span><input class="in" type="number" id="maxM" min="0" inputmode="numeric"><span>개월</span><input class="in" type="number" id="maxD" min="0" inputmode="numeric"><span>일</span></div>
+      <label class="chk"><input type="checkbox" id="noMax"> 상한 없음 (예: 성인 실험)</label>
+    </fieldset>
+    <p class="hint">개월 칸에는 12 이상도 넣을 수 있습니다. 예: 33개월 20일 → 0세 33개월 20일.</p>
+    <p class="err" id="eErr"></p>
+    <div class="actions">
+      <button type="button" class="danger left" id="eDel">삭제</button>
+      <button type="button" id="eCancel">취소</button>
+      <button type="submit" class="primary">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgDel">
+  <div class="dlg">
+    <h3>실험 삭제</h3>
+    <p id="delMsg"></p>
+    <div class="actions"><button type="button" id="delCancel">취소</button><button type="button" class="danger fill" id="delOk">삭제</button></div>
+  </div>
+</dialog>
+
+<dialog id="dlgLogin">
+  <form id="fLogin" novalidate>
+    <h3>연구실 계정</h3>
+    <p class="hint" id="loginInfo">같은 아이디·비밀번호로 로그인한 사람은 모두 같은 실험 목록을 봅니다.</p>
+    <div id="loginFields" class="dlg" style="padding:0">
+      <div class="field"><label for="lid">아이디 (영문 소문자·숫자·-·_, 3~30자)</label><input class="in" id="lid" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="30"></div>
+      <div class="field"><label for="lpw">비밀번호 (4자 이상)</label><input class="in" id="lpw" type="password" autocomplete="current-password"></div>
+      <label class="chk"><input type="checkbox" id="lkeep" checked> 이 기기에서 로그인 유지</label>
+    </div>
+    <p class="err" id="lErr"></p>
+    <div class="actions">
+      <button type="button" class="left" id="lCreate">새 계정 만들기</button>
+      <button type="button" id="lCancel">닫기</button>
+      <button type="submit" class="primary" id="lGo">로그인</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgAcct">
+  <div class="dlg">
+    <h3>연구실 계정</h3>
+    <p id="acctMsg"></p>
+    <div class="actions"><button type="button" class="left" id="aRefresh">새로고침</button><button type="button" class="danger" id="aOut">로그아웃</button><button type="button" class="primary" id="aClose">닫기</button></div>
+  </div>
+</dialog>
+
+<dialog id="dlgBackup">
+  <div class="dlg">
+    <h3>백업·가져오기</h3>
+    <p class="hint">아래 내용을 복사해 두면 백업이 됩니다. 다른 목록을 붙여넣고 "이 내용으로 바꾸기"를 누르면 현재 목록이 그 내용으로 바뀝니다.</p>
+    <textarea class="in" id="bkText" spellcheck="false" aria-label="실험 목록 JSON"></textarea>
+    <p class="err" id="bkErr"></p>
+    <div class="actions">
+      <button type="button" class="left ghost" id="bkDefault">기본 목록 넣기</button>
+      <button type="button" id="bkCopy">복사</button>
+      <button type="button" id="bkClose">닫기</button>
+      <button type="button" class="primary" id="bkApply">이 내용으로 바꾸기</button>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function(){
+"use strict";
+/* ── 설정 ─────────────────────────────────────────────
+   Google Apps Script 웹 앱 주소. 비워 두면 로그인 없이 기기에만 저장됩니다.
+   (claude.ai 링크에서는 이 값과 관계없이 claude.ai 공유 저장소를 씁니다.) */
+const API_URL = "https://script.google.com/macros/s/AKfycbyLNkNCM-zJMmnzYQ2tyby-9OTz36yqBxAzOFq4wy-FPOx8YC_GNYJ7Wuqnoy2TDJFWyQ/exec";
+
+const DEFAULTS=[
+ {n:"ERP",min:[0,4,0],max:[0,11,29]},
+ {n:"BI",min:[0,9,5],max:[0,10,25]},
+ {n:"Haruka",min:[0,17,5],max:[0,18,5]},
+ {n:"Character",min:[0,26,5],max:[0,28,10]},
+ {n:"BT",min:[0,33,20],max:[0,37,5]},
+ {n:"STAR",min:[0,48,0],max:[0,83,29]},
+ {n:"ToC",min:[0,89,0],max:[0,95,29]},
+ {n:"Puzzle",min:[0,72,0],max:[0,107,29]},
+ {n:"VEP-Face_AD",min:[19,0,0],max:null}];
+
+const $=id=>document.getElementById(id);
+const LS={get(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const uid=()=>Math.random().toString(36).slice(2,10);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ── 실험 목록 정리/검증 ── */
+function normTriple(a){if(!Array.isArray(a)||a.length!==3)return null;const r=a.map(Number);return r.every(v=>Number.isInteger(v)&&v>=0&&v<10000)?r:null}
+function normList(list){
+  if(!Array.isArray(list))throw new Error("목록은 [ ... ] 형태의 배열이어야 합니다.");
+  return list.map((e,i)=>{
+    if(!e||typeof e!=="object")throw new Error((i+1)+"번째 항목이 올바르지 않습니다.");
+    const n=String(e.n??e.name??"").trim().slice(0,40);
+    const min=normTriple(e.min);const max=e.max==null?null:normTriple(e.max);
+    if(!n||!min||(e.max!=null&&!max))throw new Error((i+1)+"번째 항목의 이름이나 연령이 올바르지 않습니다.");
+    return {id:typeof e.id==="string"&&e.id?e.id.slice(0,20):uid(),n,min,max};
+  });
+}
+const defaults=()=>normList(DEFAULTS);
+
+/* ── 날짜 계산 (원본과 동일한 규칙) ── */
+const dim=(y,m)=>new Date(Date.UTC(y,m+1,0)).getUTCDate();
+function addYMD(b,y,m,d){const t=b.getUTCFullYear()*12+b.getUTCMonth()+y*12+m;const Y=Math.floor(t/12),M=t%12;
+  const day=Math.min(b.getUTCDate(),dim(Y,M));return new Date(Date.UTC(Y,M,day+d))}
+const fmt=d=>d.getUTCFullYear()+"/"+String(d.getUTCMonth()+1).padStart(2,"0")+"/"+String(d.getUTCDate()).padStart(2,"0");
+function ageOf(b,t){let m=(t.getUTCFullYear()-b.getUTCFullYear())*12+t.getUTCMonth()-b.getUTCMonth();
+  if(addYMD(b,0,m,0)>t)m--;const a=addYMD(b,0,m,0);const d=Math.round((t-a)/864e5);return{months:m,days:d,y:Math.floor(m/12),rm:m%12}}
+const lab=r=>(r[0]?r[0]+"y ":"")+(r[1]?r[1]+"m ":"")+r[2]+"d";
+const approxDays=r=>r[0]*365.25+r[1]*30.44+r[2];
+
+/* ── YYYY/MM/DD 입력 ── */
+function mask(el){const d=el.value.replace(/\D/g,"").slice(0,8);let o=d.slice(0,4);if(d.length>4)o+="/"+d.slice(4,6);if(d.length>6)o+="/"+d.slice(6,8);el.value=o}
+function parseYMD(s){if(!s)return null;const m=/^(\d{4})\/(\d{2})\/(\d{2})$/.exec(s);if(!m)return "partial";
+  const y=+m[1],mo=+m[2],d=+m[3];const dt=new Date(Date.UTC(y,mo-1,d));
+  if(dt.getUTCFullYear()!==y||dt.getUTCMonth()!==mo-1||dt.getUTCDate()!==d)return "invalid";return dt}
+function wireDate(textId,pickId){
+  const tx=$(textId),pk=$(pickId);
+  tx.addEventListener("input",()=>{mask(tx);syncPick();render()});
+  pk.addEventListener("click",()=>{try{pk.showPicker&&pk.showPicker()}catch(e){}});
+  pk.addEventListener("change",()=>{if(pk.value){tx.value=pk.value.replace(/-/g,"/");render()}});
+  function syncPick(){const p=parseYMD(tx.value);pk.value=p instanceof Date?tx.value.replace(/\//g,"-"):""}
+  return syncPick;
+}
+const syncBd=wireDate("bd","bdPick"),syncTd=wireDate("td","tdPick");
+$("todayBtn").onclick=()=>{const n=new Date();$("td").value=n.getFullYear()+"/"+String(n.getMonth()+1).padStart(2,"0")+"/"+String(n.getDate()).padStart(2,"0");syncTd();render()};
+
+/* ── 상태 ── */
+let exps=(()=>{try{return normList(LS.get("agecalc.local")||DEFAULTS)}catch(e){return defaults()}})();
+let backend=null,session=null,unsub=null,backendReady=false;
+
+/* ── 화면 그리기 ── */
+function render(){
+  const bv=$("bd").value,tv=$("td").value;const b=parseYMD(bv),t=parseYMD(tv);
+  $("bdErr").textContent=b==="invalid"?"없는 날짜입니다.":"";
+  $("tdErr").textContent=t==="invalid"?"없는 날짜입니다.":"";
+  const B=b instanceof Date?b:null,T=t instanceof Date?t:null;
+  const A=$("age");
+  if(B&&T){A.hidden=false;
+    if(T<B){A.textContent="실험일이 생년월일보다 빠릅니다.";}
+    else{const a=ageOf(B,T);A.innerHTML=`<b>실험일 기준 연령</b> · 만 <span class="num">${a.y}</span>세 (<span class="num">${a.y}세 ${a.rm}개월 ${a.days}일</span>) · 월령 <span class="num">${a.months}m ${a.days}d</span>`}
+  }else A.hidden=true;
+  const showSt=!!(B&&T&&T>=B);$("stTh").hidden=!showSt;
+  $("count").textContent=exps.length+"개";
+  if(!exps.length){$("tb").innerHTML=`<tr><td class="empty" colspan="6">실험이 없습니다. "+ 새 실험"으로 추가하세요.</td></tr>`;return}
+  $("tb").innerHTML=exps.map(e=>{
+    const s=B?addYMD(B,e.min[0],e.min[1],e.min[2]):null;
+    const en=B&&e.max?addYMD(B,e.max[0],e.max[1],e.max[2]):null;
+    let st="",cls="";
+    if(showSt){const ok=T>=s&&(!en||T<=en);cls=ok?"is-ok":"";
+      st=ok?`<span class="status ok">가능</span>`:(T<s?`<span class="status young">너무 어림</span>`:`<span class="status over">초과</span>`)}
+    return `<tr class="${cls}"><td class="name">${esc(e.n)}</td>
+      <td class="mono" data-k="연령 범위">${lab(e.min)} ~ ${e.max?lab(e.max):"상한 없음"}</td>
+      <td class="mono" data-k="가능 시작일">${s?fmt(s):"-"}</td>
+      <td class="mono" data-k="가능 종료일">${en?fmt(en):"-"}</td>
+      ${showSt?`<td class="st">${st}</td>`:""}
+      <td class="act"><button type="button" class="ghost" data-edit="${e.id}">수정</button><button type="button" class="ghost danger" data-del="${e.id}">삭제</button></td></tr>`}).join("");
+}
+$("tb").addEventListener("click",ev=>{const btn=ev.target.closest("button");if(!btn)return;
+  if(btn.dataset.edit)openEdit(btn.dataset.edit);else if(btn.dataset.del)askDelete(btn.dataset.del)});
+
+/* ── 알림 ── */
+let toastT;function toast(msg,bad){const el=$("toast");el.textContent=msg;el.className="toast"+(bad?" bad":"");el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,bad?5000:2200)}
+function errText(e){const c=e&&e.code;return({
+  no_account:"등록되지 않은 아이디입니다. 처음이라면 '새 계정 만들기'를 누르세요.",
+  wrong_pw:"비밀번호가 맞지 않습니다.",
+  exists:"이미 있는 아이디입니다. 로그인하거나 다른 아이디를 쓰세요.",
+  bad_id:"아이디는 영문 소문자·숫자·-·_ 로 3~30자여야 합니다.",
+  bad_pw:"비밀번호는 4자 이상이어야 합니다.",
+  network:"서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도하세요.",
+  invalid_argument:"이 링크에서는 저장 권한이 없습니다. 링크 소유자에게 Contributor 이상 권한을 요청하세요.",
+  quota_exceeded:"저장 공간이 가득 찼습니다.",
+  revoked:"접근 권한이 바뀌어 저장할 수 없습니다."
+})[c]||("저장하지 못했습니다"+(c?" ("+c+")":"")+". 잠시 후 다시 시도하세요.")}
+
+/* ── 저장 ── */
+function setStatus(s){
+  const dot=$("acctDot"),tx=$("acctText");dot.className="dot";
+  if(!session){tx.textContent=backend?"이 기기에만 저장 중 · 로그인":"이 기기에만 저장 중";return}
+  dot.classList.add(s||"saved");
+  tx.textContent=session.id+" · "+({saving:"저장 중…",error:"저장 실패",offline:"오프라인"}[s]||"공유 저장됨");
+}
+async function commit(next,msg){
+  const prev=exps;exps=next;render();
+  if(!session){LS.set("agecalc.local",exps);toast(msg);return true}
+  setStatus("saving");
+  try{await backend.save(session,exps);LS.set("agecalc.cache."+session.id,exps);setStatus("saved");toast(msg);return true}
+  catch(e){exps=prev;render();setStatus("error");toast(errText(e),true);return false}
+}
+
+/* ── 실험 수정/생성 ── */
+let editing=null;
+function fill(prefix,r){["Y","M","D"].forEach((k,i)=>$(prefix+k).value=r?r[i]:"")}
+function readTriple(prefix){const v=["Y","M","D"].map(k=>$(prefix+k).value.trim());if(v.every(x=>x===""))return "empty";
+  const r=v.map(x=>x===""?0:Number(x));return r.every(n=>Number.isInteger(n)&&n>=0&&n<10000)?r:null}
+function toggleMax(){const off=$("noMax").checked;["maxY","maxM","maxD"].forEach(id=>$(id).disabled=off)}
+$("noMax").onchange=toggleMax;
+$("addBtn").onclick=()=>openEdit(null);
+function openEdit(id){
+  editing=id;const e=id?exps.find(x=>x.id===id):null;if(id&&!e)return;
+  $("expTitle").textContent=e?"실험 수정":"새 실험";
+  $("eName").value=e?e.n:"";fill("min",e?e.min:[0,0,0]);fill("max",e&&e.max?e.max:null);
+  $("noMax").checked=!!(e&&!e.max);toggleMax();$("eDel").hidden=!e;$("eErr").textContent="";
+  $("dlgExp").showModal();$("eName").focus();
+}
+$("eCancel").onclick=()=>$("dlgExp").close();
+$("eDel").onclick=()=>{const id=editing;$("dlgExp").close();askDelete(id)};
+$("fExp").addEventListener("submit",async ev=>{ev.preventDefault();
+  const n=$("eName").value.trim();const err=$("eErr");
+  if(!n){err.textContent="실험 이름을 입력하세요.";return}
+  if(exps.some(x=>x.n.toLowerCase()===n.toLowerCase()&&x.id!==editing)){err.textContent="같은 이름의 실험이 이미 있습니다.";return}
+  let min=readTriple("min");if(min==="empty")min=[0,0,0];if(!min){err.textContent="최소 연령에는 0 이상의 정수만 넣을 수 있습니다.";return}
+  let max=null;if(!$("noMax").checked){max=readTriple("max");
+    if(max==="empty"){err.textContent="최대 연령을 입력하거나 '상한 없음'을 선택하세요.";return}
+    if(!max){err.textContent="최대 연령에는 0 이상의 정수만 넣을 수 있습니다.";return}
+    if(approxDays(max)<approxDays(min)){err.textContent="최대 연령이 최소 연령보다 작습니다.";return}}
+  const item={id:editing||uid(),n,min,max};
+  const next=editing?exps.map(x=>x.id===editing?item:x):[...exps,item];
+  $("dlgExp").close();await commit(next,editing?`${n} 수정됨`:`${n} 추가됨`);
+});
+
+/* ── 삭제 ── */
+let delId=null;
+function askDelete(id){const e=exps.find(x=>x.id===id);if(!e)return;delId=id;
+  $("delMsg").textContent=`'${e.n}' 실험을 목록에서 삭제할까요?`+(session?" 같은 계정을 쓰는 모든 사람의 목록에서 사라집니다.":"");$("dlgDel").showModal()}
+$("delCancel").onclick=()=>$("dlgDel").close();
+$("delOk").onclick=async()=>{const e=exps.find(x=>x.id===delId);$("dlgDel").close();if(e)await commit(exps.filter(x=>x.id!==delId),`${e.n} 삭제됨`)};
+
+/* ── 백업·가져오기 ── */
+const pretty=list=>"[\n"+list.map(e=>"  "+JSON.stringify({n:e.n,min:e.min,max:e.max})).join(",\n")+"\n]";
+$("backupBtn").onclick=()=>{$("bkText").value=pretty(exps);$("bkErr").textContent="";$("dlgBackup").showModal()};
+$("bkClose").onclick=()=>$("dlgBackup").close();
+$("bkDefault").onclick=()=>{$("bkText").value=pretty(defaults());$("bkErr").textContent="기본 목록을 넣었습니다. '이 내용으로 바꾸기'를 눌러야 적용됩니다."};
+$("bkCopy").onclick=async()=>{const ta=$("bkText");try{await navigator.clipboard.writeText(ta.value);toast("복사했습니다")}catch(e){ta.focus();ta.select();toast("선택된 내용을 Ctrl+C(⌘C)로 복사하세요")}};
+$("bkApply").onclick=async()=>{let list;try{list=normList(JSON.parse($("bkText").value))}catch(e){$("bkErr").textContent=e instanceof SyntaxError?"형식이 올바르지 않습니다. [ { \"n\": ..., \"min\": [y,m,d], \"max\": [y,m,d] 또는 null } ] 형태인지 확인하세요.":e.message;return}
+  $("dlgBackup").close();await commit(list,`목록을 바꿨습니다 (${list.length}개)`)};
+
+/* ── 백엔드: claude.ai 공유 저장소 ── */
+async function sha(id,pw){const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("agecalc:"+id+":"+pw));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("")}
+function dbBackend(db){
+  const ref=id=>db.doc("labs/"+id);
+  const wrap=async f=>{try{return await f()}catch(e){throw {code:(e&&e.code)||"unknown"}}};
+  return {kind:"db",
+    async login(id,pw){const s=await wrap(()=>ref(id).get());if(!s.exists)throw{code:"no_account"};const d=s.data();
+      const h=await sha(id,pw);if(d.pwHash!==h)throw{code:"wrong_pw"};return{experiments:d.experiments,hash:h}},
+    async create(id,pw,list){const r=ref(id);const s=await wrap(()=>r.get());if(s.exists)throw{code:"exists"};const h=await sha(id,pw);
+      await wrap(()=>r.set({pwHash:h,experiments:list,updatedAt:new Date().toISOString()}));return{experiments:list,hash:h}},
+    save(sess,list){return wrap(()=>ref(sess.id).update({experiments:list,updatedAt:new Date().toISOString()}))},
+    subscribe(sess,cb){return ref(sess.id).onSnapshot(s=>{if(!s.exists||s.data().pwHash!==sess.hash){cb(null);return}cb(s.data().experiments)},()=>setStatus("error"))}
+  };
+}
+/* ── 백엔드: Google Apps Script (앱 버전) ── */
+function gasBackend(url){
+  async function call(body){let r;try{r=await fetch(url,{method:"POST",body:JSON.stringify(body)})}catch(e){throw{code:"network"}}
+    let j;try{j=await r.json()}catch(e){throw{code:"network"}}if(!j.ok)throw{code:j.code||"unknown"};return j}
+  return {kind:"gas",
+    login:(id,pw)=>call({action:"load",id,pw}),
+    create:(id,pw,list)=>call({action:"create",id,pw,experiments:list}),
+    save:(s,list)=>call({action:"save",id:s.id,pw:s.pw,experiments:list}),
+    refresh:s=>call({action:"load",id:s.id,pw:s.pw})};
+}
+
+function applyRemote(list){if(!list)return;try{exps=normList(list)}catch(e){return}LS.set("agecalc.cache."+session.id,exps);render()}
+async function startSession(id,pw,res,keep){
+  session={id,pw,hash:res.hash};applyRemote(res.experiments||[]);setStatus("saved");
+  if(keep)LS.set("agecalc.session",{id,pw});else LS.del("agecalc.session");
+  if(unsub){unsub();unsub=null}
+  if(backend.subscribe)unsub=backend.subscribe(session,list=>{if(list===null){logout("계정 정보가 바뀌어 로그아웃되었습니다.");return}applyRemote(list)});
+}
+function logout(msg){if(unsub){unsub();unsub=null}session=null;LS.del("agecalc.session");
+  try{exps=normList(LS.get("agecalc.local")||DEFAULTS)}catch(e){exps=defaults()}render();setStatus();if(msg)toast(msg,true)}
+async function refresh(){if(!session||!backend.refresh)return;try{const r=await backend.refresh(session);applyRemote(r.experiments);setStatus("saved")}
+  catch(e){if(e.code==="wrong_pw"||e.code==="no_account")logout(errText(e));else setStatus("offline")}}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")refresh()});
+
+/* ── 로그인 화면 ── */
+$("acct").onclick=()=>{
+  if(session){$("acctMsg").innerHTML=`<b>${esc(session.id)}</b> 계정으로 로그인되어 있습니다. 실험을 추가·수정·삭제하면 이 계정을 쓰는 모든 사람에게 반영됩니다.`;
+    $("aRefresh").hidden=!backend.refresh;$("dlgAcct").showModal();return}
+  const can=!!backend;$("loginFields").hidden=!can;$("lGo").hidden=!can;$("lCreate").hidden=!can;$("lErr").textContent="";
+  $("loginInfo").textContent=can?"같은 아이디·비밀번호로 로그인한 사람은 모두 같은 실험 목록을 봅니다. 아이디가 없으면 원하는 아이디·비밀번호를 넣고 '새 계정 만들기'를 누르세요."
+    :(backendReady?"이 화면에서는 공유 저장소를 쓸 수 없어 이 기기에만 저장됩니다. (앱 버전은 관리자가 서버 주소를 설정하면 로그인할 수 있습니다.)":"공유 저장소에 연결하는 중입니다. 잠시 후 다시 눌러 주세요.");
+  $("dlgLogin").showModal();if(can)$("lid").focus();
+};
+$("lCancel").onclick=()=>$("dlgLogin").close();
+$("aClose").onclick=()=>$("dlgAcct").close();
+$("aOut").onclick=()=>{$("dlgAcct").close();logout();toast("로그아웃했습니다. 지금부터는 이 기기에만 저장됩니다.")};
+$("aRefresh").onclick=async()=>{$("dlgAcct").close();await refresh();toast("최신 목록을 불러왔습니다")};
+function readCreds(){const id=$("lid").value.trim().toLowerCase(),pw=$("lpw").value;
+  if(!/^[a-z0-9_-]{3,30}$/.test(id))throw{code:"bad_id"};if(pw.length<4)throw{code:"bad_pw"};return{id,pw}}
+async function doAuth(create){
+  const err=$("lErr");err.textContent="";let c;try{c=readCreds()}catch(e){err.textContent=errText(e);return}
+  $("lGo").disabled=$("lCreate").disabled=true;err.textContent=create?"계정을 만드는 중…":"로그인 중…";
+  try{const res=create?await backend.create(c.id,c.pw,exps):await backend.login(c.id,c.pw);
+    await startSession(c.id,c.pw,res,$("lkeep").checked);$("dlgLogin").close();$("lpw").value="";
+    toast(create?`${c.id} 계정을 만들었습니다. 현재 목록이 이 계정에 저장됐습니다.`:`${c.id}로 로그인했습니다`)}
+  catch(e){err.textContent=errText(e)}
+  finally{$("lGo").disabled=$("lCreate").disabled=false}
+}
+$("fLogin").addEventListener("submit",ev=>{ev.preventDefault();doAuth(false)});
+$("lCreate").onclick=()=>doAuth(true);
+
+/* ── 시작 ── */
+render();
+const saved=LS.get("agecalc.session");
+if(saved){const cached=LS.get("agecalc.cache."+saved.id);if(cached){try{exps=normList(cached);render()}catch(e){}}}
+(async()=>{
+  if(window.claude&&typeof window.claude.use==="function"){try{const db=await window.claude.use("db");if(db)backend=dbBackend(db)}catch(e){}}
+  if(!backend&&API_URL&&/^https:\/\//.test(API_URL))backend=gasBackend(API_URL);
+  backendReady=true;
+  if(backend&&saved&&saved.id&&saved.pw){
+    session={id:saved.id,pw:saved.pw};setStatus("saving");
+    try{const res=await backend.login(saved.id,saved.pw);await startSession(saved.id,saved.pw,res,true)}
+    catch(e){if(e.code==="network"){setStatus("offline")}else logout(errText(e))}
+  }else if(!backend&&saved){session=null;try{exps=normList(LS.get("agecalc.local")||DEFAULTS)}catch(e){}render();setStatus()}
+  else setStatus();
+})();
+})();
+</script>
+
+<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}</script>
+</body></html>
