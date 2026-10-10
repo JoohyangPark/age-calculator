@@ -80,6 +80,9 @@ th{font-size:.75rem;font-weight:500;color:var(--muted);letter-spacing:.03em;whit
 td.name{font-weight:600}
 td.mono,.mono{font-family:var(--font-data);font-variant-numeric:tabular-nums;white-space:nowrap;font-size:.92rem}
 td.act{text-align:right;white-space:nowrap}
+td.memo{white-space:pre-wrap;font-size:.86rem;min-width:12em;max-width:22em;color:var(--fg)}
+td.memo:empty::after{content:"-";color:var(--muted)}
+.memo-mark{display:inline-block;font-size:.7rem;font-weight:600;color:var(--young);background:var(--young-bg);border-radius:4px;padding:0 5px;margin-right:6px;vertical-align:1px}
 .status{display:inline-block;font-size:.8rem;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap}
 .status.ok{background:var(--ok-bg);color:var(--ok)} .status.young{background:var(--young-bg);color:var(--young)} .status.over{background:var(--over-bg);color:var(--over)}
 tr.is-ok td.name{color:var(--ok)}
@@ -96,6 +99,8 @@ tr.is-ok td.name{color:var(--ok)}
   td.st{grid-column:2;grid-row:1;text-align:right}
   td[data-k]{grid-column:1 / -1;display:flex;justify-content:space-between;gap:10px}
   td[data-k]::before{content:attr(data-k);color:var(--muted);font-family:var(--font-body);font-size:.78rem;font-weight:400}
+  td.memo{grid-column:1 / -1;max-width:none;min-width:0;background:var(--young-bg);border-radius:6px;padding:6px 8px;margin-top:4px}
+  td.memo:empty{display:none}
   td.act{grid-column:1 / -1;text-align:left;border-top:1px dashed var(--line);margin-top:4px;padding-top:6px}
   td.st:empty{display:none}
 }
@@ -164,7 +169,7 @@ textarea.in{font-family:var(--font-data);font-size:.8rem;min-height:180px;resize
     </div>
     <div class="tablebox">
       <table>
-        <thead><tr><th>실험</th><th>연령 범위</th><th>가능 시작일</th><th>가능 종료일</th><th id="stTh" hidden>TD 가능 여부</th><th><span class="sr">관리</span></th></tr></thead>
+        <thead><tr><th>실험</th><th>연령 범위</th><th>가능 시작일</th><th>가능 종료일</th><th id="stTh" hidden>TD 가능 여부</th><th>비고</th><th><span class="sr">관리</span></th></tr></thead>
         <tbody id="tb"></tbody>
       </table>
     </div>
@@ -183,6 +188,7 @@ textarea.in{font-family:var(--font-data);font-size:.8rem;min-height:180px;resize
       <div class="agegrid" id="maxGrid"><input class="in" type="number" id="maxY" min="0" inputmode="numeric"><span>세</span><input class="in" type="number" id="maxM" min="0" inputmode="numeric"><span>개월</span><input class="in" type="number" id="maxD" min="0" inputmode="numeric"><span>일</span></div>
       <label class="chk"><input type="checkbox" id="noMax"> 상한 없음 (예: 성인 실험)</label>
     </fieldset>
+    <div class="field"><label for="eNote">비고 (주의사항)</label><textarea class="in" id="eNote" rows="3" maxlength="500" placeholder="예: 노트북 사용 금지"></textarea></div>
     <p class="hint">개월 칸에는 12 이상도 넣을 수 있습니다. 예: 33개월 20일 → 0세 33개월 20일.</p>
     <p class="err" id="eErr"></p>
     <div class="actions">
@@ -255,12 +261,12 @@ const API_URL = "https://script.google.com/macros/s/AKfycbyLNkNCM-zJMmnzYQ2tyby-
 const DEFAULTS=[
  {n:"ERP",min:[0,4,0],max:[0,11,29]},
  {n:"BI",min:[0,9,5],max:[0,10,25]},
- {n:"Haruka",min:[0,17,5],max:[0,18,5]},
- {n:"Character",min:[0,26,5],max:[0,28,10]},
- {n:"BT",min:[0,33,20],max:[0,37,5]},
- {n:"STAR",min:[0,48,0],max:[0,83,29]},
- {n:"ToC",min:[0,89,0],max:[0,95,29]},
- {n:"Puzzle",min:[0,72,0],max:[0,107,29]},
+ {n:"Haruka",min:[0,17,5],max:[0,18,5],note:"*이중 및 다중 언어자 참여 불가능"},
+ {n:"Character",min:[0,26,5],max:[0,28,10],note:"* 되도록 27개월 이상이 될 수 있게 잡아주세요."},
+ {n:"BT",min:[0,33,20],max:[0,37,5],note:"* 다른 대면연구와 Double X\n* 노트북 및 데스크탑만 가능\n* 가능하면 34개월 후반~36개월로 잡아주세요"},
+ {n:"STAR",min:[0,48,0],max:[0,83,29],note:"* 대면 / 비대면 모두 진행 가능 (pilot 은 대면만 진행할게요)\n* 노트북 및 데스크탑만 가능\n* Puzzle, ToC 둘다랑 doubling 불가능. \n* ToC와 2주 이상 간격"},
+ {n:"ToC",min:[0,89,0],max:[0,95,29],note:"* 대면만 가능가능\n* Puzzle과 doubling시 1주일 간격 \n* STAR와 2주 이상 간격"},
+ {n:"Puzzle",min:[0,72,0],max:[0,107,29],note:"* SMART, STAR 참여한 아동은 연구 참여 불가, 스케줄 잡을 때 아동이 '끈기' 관련인 것을 알게 될 경우, 연구 자체에 영향이 있을 수 있어, 해당 부분에 대해서는 언급하지 말아달라고 말씀드려주세요. \n* 아동 1명일 때 1시간, 2명 오면 1시간 30분으로 잡아주세요.\n*ToC와 간격 1주일"},
  {n:"VEP-Face_AD",min:[19,0,0],max:null}];
 
 const $=id=>document.getElementById(id);
@@ -278,10 +284,19 @@ function normList(list){
     const n=String(e.n??e.name??"").trim().slice(0,40);
     const min=normTriple(e.min);const max=e.max==null?null:normTriple(e.max);
     if(!n||!min||(e.max!=null&&!max))throw new Error((i+1)+"번째 항목의 이름이나 연령이 올바르지 않습니다.");
-    return {id:typeof e.id==="string"&&e.id?e.id.slice(0,20):uid(),n,min,max};
+    const note=String(e.note??"").trim().slice(0,500);
+    return {id:typeof e.id==="string"&&e.id?e.id.slice(0,20):uid(),n,min,max,note};
   });
 }
 const defaults=()=>normList(DEFAULTS);
+/* 비고가 비어 있는 기존 실험에 기본 비고를 한 번만 채움 (이름이 같을 때) */
+const FILL_KEY="agecalc.notesFilled.v1.";
+function fillNotes(list,scope){
+  if(LS.get(FILL_KEY+scope))return null;
+  let changed=false;const out=list.map(e=>{if(e.note)return e;const d=DEFAULTS.find(x=>x.n.toLowerCase()===e.n.toLowerCase());
+    if(d&&d.note){changed=true;return {...e,note:d.note}}return e});
+  return {list:out,changed};
+}
 
 /* ── 날짜 계산 (원본과 동일한 규칙) ── */
 const dim=(y,m)=>new Date(Date.UTC(y,m+1,0)).getUTCDate();
@@ -311,6 +326,7 @@ $("todayBtn").onclick=()=>{const n=new Date();$("td").value=n.getFullYear()+"/"+
 
 /* ── 상태 ── */
 let exps=(()=>{try{return normList(LS.get("agecalc.local")||DEFAULTS)}catch(e){return defaults()}})();
+{const f=fillNotes(exps,"local");if(f){exps=f.list;if(f.changed&&LS.get("agecalc.local"))LS.set("agecalc.local",exps);LS.set(FILL_KEY+"local",1)}}
 let backend=null,session=null,unsub=null,backendReady=false;
 
 /* ── 화면 그리기 ── */
@@ -326,7 +342,7 @@ function render(){
   }else A.hidden=true;
   const showSt=!!(B&&T&&T>=B);$("stTh").hidden=!showSt;
   $("count").textContent=exps.length+"개";
-  if(!exps.length){$("tb").innerHTML=`<tr><td class="empty" colspan="6">실험이 없습니다. "+ 새 실험"으로 추가하세요.</td></tr>`;return}
+  if(!exps.length){$("tb").innerHTML=`<tr><td class="empty" colspan="7">실험이 없습니다. "+ 새 실험"으로 추가하세요.</td></tr>`;return}
   $("tb").innerHTML=exps.map(e=>{
     const s=B?addYMD(B,e.min[0],e.min[1],e.min[2]):null;
     const en=B&&e.max?addYMD(B,e.max[0],e.max[1],e.max[2]):null;
@@ -338,6 +354,7 @@ function render(){
       <td class="mono" data-k="가능 시작일">${s?fmt(s):"-"}</td>
       <td class="mono" data-k="가능 종료일">${en?fmt(en):"-"}</td>
       ${showSt?`<td class="st">${st}</td>`:""}
+      <td class="memo">${esc(e.note||"")}</td>
       <td class="act"><button type="button" class="ghost" data-edit="${e.id}">수정</button><button type="button" class="ghost danger" data-del="${e.id}">삭제</button></td></tr>`}).join("");
 }
 $("tb").addEventListener("click",ev=>{const btn=ev.target.closest("button");if(!btn)return;
@@ -383,7 +400,7 @@ $("addBtn").onclick=()=>openEdit(null);
 function openEdit(id){
   editing=id;const e=id?exps.find(x=>x.id===id):null;if(id&&!e)return;
   $("expTitle").textContent=e?"실험 수정":"새 실험";
-  $("eName").value=e?e.n:"";fill("min",e?e.min:[0,0,0]);fill("max",e&&e.max?e.max:null);
+  $("eName").value=e?e.n:"";fill("min",e?e.min:[0,0,0]);fill("max",e&&e.max?e.max:null);$("eNote").value=e?(e.note||""):"";
   $("noMax").checked=!!(e&&!e.max);toggleMax();$("eDel").hidden=!e;$("eErr").textContent="";
   $("dlgExp").showModal();$("eName").focus();
 }
@@ -398,7 +415,8 @@ $("fExp").addEventListener("submit",async ev=>{ev.preventDefault();
     if(max==="empty"){err.textContent="최대 연령을 입력하거나 '상한 없음'을 선택하세요.";return}
     if(!max){err.textContent="최대 연령에는 0 이상의 정수만 넣을 수 있습니다.";return}
     if(approxDays(max)<approxDays(min)){err.textContent="최대 연령이 최소 연령보다 작습니다.";return}}
-  const item={id:editing||uid(),n,min,max};
+  const note=$("eNote").value.trim().slice(0,500);
+  const item={id:editing||uid(),n,min,max,note};
   const next=editing?exps.map(x=>x.id===editing?item:x):[...exps,item];
   $("dlgExp").close();await commit(next,editing?`${n} 수정됨`:`${n} 추가됨`);
 });
@@ -411,7 +429,7 @@ $("delCancel").onclick=()=>$("dlgDel").close();
 $("delOk").onclick=async()=>{const e=exps.find(x=>x.id===delId);$("dlgDel").close();if(e)await commit(exps.filter(x=>x.id!==delId),`${e.n} 삭제됨`)};
 
 /* ── 백업·가져오기 ── */
-const pretty=list=>"[\n"+list.map(e=>"  "+JSON.stringify({n:e.n,min:e.min,max:e.max})).join(",\n")+"\n]";
+const pretty=list=>"[\n"+list.map(e=>"  "+JSON.stringify(e.note?{n:e.n,min:e.min,max:e.max,note:e.note}:{n:e.n,min:e.min,max:e.max})).join(",\n")+"\n]";
 $("backupBtn").onclick=()=>{$("bkText").value=pretty(exps);$("bkErr").textContent="";$("dlgBackup").showModal()};
 $("bkClose").onclick=()=>$("dlgBackup").close();
 $("bkDefault").onclick=()=>{$("bkText").value=pretty(defaults());$("bkErr").textContent="기본 목록을 넣었습니다. '이 내용으로 바꾸기'를 눌러야 적용됩니다."};
@@ -450,6 +468,8 @@ async function startSession(id,pw,res,keep){
   session={id,pw,hash:res.hash};applyRemote(res.experiments||[]);setStatus("saved");
   if(keep)LS.set("agecalc.session",{id,pw});else LS.del("agecalc.session");
   if(unsub){unsub();unsub=null}
+  const f=fillNotes(exps,id);
+  if(f){if(f.changed){try{await backend.save(session,f.list);exps=f.list;LS.set("agecalc.cache."+id,exps);render();LS.set(FILL_KEY+id,1)}catch(e){}}else LS.set(FILL_KEY+id,1)}
   if(backend.subscribe)unsub=backend.subscribe(session,list=>{if(list===null){logout("계정 정보가 바뀌어 로그아웃되었습니다.");return}applyRemote(list)});
 }
 function logout(msg){if(unsub){unsub();unsub=null}session=null;LS.del("agecalc.session");
